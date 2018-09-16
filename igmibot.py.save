@@ -1,4 +1,4 @@
-from telegram import (InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup, KeyboardButton, ReplyKeyboardRemove)
+from telegram import (InlineKeyboardButton, InlineKeyboardMarkup)
 from telegram.ext import (CommandHandler, MessageHandler, ConversationHandler, CallbackQueryHandler, Filters)
 from ..errorCallback import error_callback
 from . import dbFuncs
@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 transDir = "/home/shiro/gitProjects/telegramBots/igmibot/translations"
 excelDir = "/home/shiro/gitProjects/telegramBots/igmibot/excelTables"
 documentsDir = "/home/shiro/gitProjects/telegramBots/igmibot/documents"
-igmimail = "igmi@students.uni-mainz.de"
+igmimail = "noreply@igmitest.de"
 langs = ["en", "de"]
 
 SETLANG, TGUNDERUSAGE, EMAIL, MAILUNDERUSAGE, CONFIRMATION = range(5)
@@ -30,10 +30,10 @@ def start(bot, update):
     botText = json.load(language)
   # Check if telegram-user is already registered and send message if yes
   if dbFuncs.isTGMember(tid = update.message.from_user['id']):
-    bot.send_message(chat_id = update.message.chat_id, text = botText['tgUnderUsage'], reply_markup = createReplyKeyboard(botText['underUsageKeyboard']))
+    bot.send_message(chat_id = update.message.chat_id, text = botText['tgUnderUsage'], reply_markup = createKeyboard(botText['underUsageKeyboard']))
     return TGUNDERUSAGE # This is for ConversationHandler
   # Send welcome message
-  bot.send_message(chat_id = update.message.chat_id, text = botText['welcome'], reply_markup = createReplyKeyboard([langs]))
+  bot.send_message(chat_id = update.message.chat_id, text = botText['welcome'], reply_markup = createKeyboard([[[i]*2 for i in langs[j*3:j*3+3]]for j in range(1+int(len(langs)/3))]))
   return SETLANG
 
 #TODO Privacy text. Not yet implemented.
@@ -43,37 +43,29 @@ def privacy(bot, update):
     botText = json.load(language)
   bot.send_message(chat_id = update.message.chat_id, text = botText['privacy'])
 
+
 def tgUnderUsage(bot, update):
-  choice = update.message.text
-  lang = dbFuncs.getTelegramID(id = update.message.from_user['id'])[3]
+  choice = update.callback_query.data
+  lang = dbFuncs.getTelegramID(id = update.callback_query.from_user['id'])[3]
   with open("{0}/{1}.json".format(transDir, lang), 'r') as language:
     botText = json.load(language)
-  oldID = dbFuncs.getTelegramID(id = update.message.from_user['id'])
+  oldID = dbFuncs.getTelegramID(id = update.callback_query.from_user['id'])
   try:
     bot.delete_message(chat_id = oldID[0], message_id = oldID[2])
   except:
     bot.edit_message_text(chat_id = oldID[0], message_id = oldID[2], text = "⬇")
-  if choice == botText['underUsageKeyboard'][0][0][0]:
-    dbFuncs.removeTelegramID(id = update.message.from_user['id'])
-    bot.send_message(chat_id = update.message.from_user['id'], text = botText['tgIdRemoved'], reply_markup = ReplyKeyboardRemove())
-  elif choice == botText['underUsageKeyboard'][0][1][0]:
-    dbFuncs.updateMessage(update.message.from_user['id'], bot.send_message(chat_id = update.message.from_user['id'], text = botText['mainScreen'], reply_markup = createInlineKeyboard(botText['mainScreenKeyboard'])).message_id)
-  else:
-    bot.send_message(chat_id = update.message.chat_id, text = botText['useKeyboard'], reply_markup = createReplyKeyboard(botText['underUssageKeyboard']))
-    return TGUNDERUSAGE
+  if choice == 'y':
+    dbFuncs.removeTelegramID(id = update.callback_query.from_user['id'])
+    bot.send_message(chat_id = update.callback_query.from_user['id'], text = botText['tgIdRemoved'])
+  elif choice == 'n':
+    dbFuncs.updateMessage(update.callback_query.from_user['id'], bot.send_message(chat_id = update.callback_query.from_user['id'], text = botText['mainScreen'], reply_markup = createKeyboard(botText['mainScreenKeyboard'])).message_id)
   return ConversationHandler.END
 
 def setLang(bot, update, user_data):
-  if update.message.text in langs:
-    user_data['lang'] = update.message.text
-  else:
-    with open("{0}/{1}.json".format(transDir, getLang(update.message.from_user)), 'r') as language:
-      botText = json.load(language)
-    bot.send_message(chat_id = update.message.chat_id, text = botText['useKeyboard'], reply_markup = createReplyKeyboard(botText['underUssageKeyboard']))
-    return SETLANG
+  user_data['lang'] = update.callback_query.data
   with open("{0}/{1}.json".format(transDir, user_data['lang']), 'r') as language:
     botText = json.load(language)
-  bot.send_message(chat_id = update.message.chat_id, text = botText['langSet'] + botText['enterEmail'], reply_markup = ReplyKeyboardRemove())
+  bot.send_message(chat_id = update.callback_query.from_user['id'], text = botText['langSet'] + botText['enterEmail'])
   return EMAIL
 
 def setMail(bot, update, user_data):
@@ -86,7 +78,7 @@ def setMail(bot, update, user_data):
   user_data['mail'] = email
   user_data['code'] = helpFuncs.createCode()
   if dbFuncs.isTGMember(email = email):
-    bot.send_message(chat_id = update.message.chat_id, text = botText['mailUnderUsage'], reply_markup = createReplyKeyboard(botText['underUsageKeyboard']))
+    bot.send_message(chat_id = update.message.chat_id, text = botText['mailUnderUsage'], reply_markup = createKeyboard(botText['underUsageKeyboard']))
     return MAILUNDERUSAGE
   return sendMail(bot, user_data, update.message.chat_id)
 
@@ -104,17 +96,13 @@ def sendMail(bot, user_data, chatId):
     return EMAIL
 
 def mailUnderUsage(bot, update, user_data):
-  choice = update.message.text
   with open("{0}/{1}.json".format(transDir, user_data['lang']), 'r') as language:
     botText = json.load(language)
-  if choice == botText['underUsageKeyboard'][0][0][0]:
-    return sendMail(bot, user_data, update.message.from_user['id'])
-  elif choice == botText['underUsageKeyboard'][0][1][0]:
-    bot.send_message(chat_id = update.message.from_user['id'], text = botText['enterEmail'])
+  if choice == 'y':
+    return sendMail(bot, user_data, update.callback_query.from_user['id'])
+  elif choice == 'n':
+    bot.send_message(chat_id = update.callback_query.from_user['id'], text = botText['enterEmail'])
     return EMAIL
-  else:
-    bot.send_message(chat_id = update.message.chat_id, text = botText['useKeyboard'], reply_markup = createReplyKeyboard(botText['underUssageKeyboard']))
-    return MAILUNDERUSAGE
 
 def confirmation(bot, update, user_data):
   with open("{0}/{1}.json".format(transDir, user_data['lang']), 'r') as language:
@@ -134,7 +122,7 @@ def confirmation(bot, update, user_data):
         bot.delete_message(chat_id = oldID[0], message_id = oldID[2])
       except:
         bot.edit_message_text(chat_id = oldID[0], message_id = oldID[2], text = "⬇")
-    dbFuncs.insertMember(user_data['mail'], user_data['lang'], update.message.from_user['id'], bot.send_message(chat_id = update.message.chat_id, text = botText['mainScreen'], reply_markup = createInlineKeyboard(botText['mainScreenKeyboard'])).message_id)
+    dbFuncs.insertMember(user_data['mail'], user_data['lang'], update.message.from_user['id'], bot.send_message(chat_id = update.message.chat_id, text = botText['mainScreen'], reply_markup = createKeyboard(botText['mainScreenKeyboard'])).message_id)
     return ConversationHandler.END
   else:
     user_data['tries']-=1
@@ -158,9 +146,9 @@ def mainScreen(bot, update):
   if number == BILL:
     bill = dbFuncs.getBill(update.callback_query.from_user['id'])
     sum = (bill[1]*30 + bill[2]*100 + bill[3]*60 + bill[4]*25 + bill[5]*100 + bill[6])/100
-    bot.edit_message_text(chat_id = update.callback_query.message.chat_id, message_id = update.callback_query.message.message_id, text = botText['bill'].format(sum), reply_markup = createInlineKeyboard(botText['billKeyboard']))
+    bot.edit_message_text(chat_id = update.callback_query.message.chat_id, message_id = update.callback_query.message.message_id, text = botText['bill'].format(sum), reply_markup = createKeyboard(botText['billKeyboard']))
   elif number == SETTINGS:
-    bot.edit_message_text(chat_id = update.callback_query.message.chat_id, message_id = update.callback_query.message.message_id, text = botText['settings'], reply_markup = createInlineKeyboard(botText['settingsKeyboard']))
+    bot.edit_message_text(chat_id = update.callback_query.message.chat_id, message_id = update.callback_query.message.message_id, text = botText['settings'], reply_markup = createKeyboard(botText['settingsKeyboard']))
   else:
     return error(bot, update.callback_query.from_user['id'])
   return number
@@ -171,9 +159,9 @@ def bill(bot, update, user_data):
   number = int(update.callback_query.data)
   if number == BUY:
     user_data['coffee'], user_data['soft'], user_data['water'], user_data['choc'], user_data['beer'] = [0]*5
-    bot.edit_message_text(chat_id = update.callback_query.message.chat_id, message_id = update.callback_query.message.message_id, text = botText['buy'].format(user_data['coffee'], user_data['soft'], user_data['water'], user_data['choc'], user_data['beer']), reply_markup = createInlineKeyboard([[["➖", "{}_-".format(i[1])], [i[0], str(BUY)], ["➕", "{}_+".format(i[1])]] for i in botText['buyKeyboardPart']] + botText['buyKeyboard']))
+    bot.edit_message_text(chat_id = update.callback_query.message.chat_id, message_id = update.callback_query.message.message_id, text = botText['buy'].format(user_data['coffee'], user_data['soft'], user_data['water'], user_data['choc'], user_data['beer']), reply_markup = createKeyboard([[["➖", "{}_-".format(i[1])], [i[0], str(BUY)], ["➕", "{}_+".format(i[1])]] for i in botText['buyKeyboardPart']] + botText['buyKeyboard']))
   elif number == MAINSCREEN:
-    bot.edit_message_text(chat_id = update.callback_query.message.chat_id, message_id = update.callback_query.message.message_id, text = botText['mainScreen'], reply_markup = createInlineKeyboard(botText['mainScreenKeyboard']))
+    bot.edit_message_text(chat_id = update.callback_query.message.chat_id, message_id = update.callback_query.message.message_id, text = botText['mainScreen'], reply_markup = createKeyboard(botText['mainScreenKeyboard']))
   else:
     return error(bot, update.callback_query.from_user['id'])
   return number
@@ -188,20 +176,20 @@ def buy(bot, update, user_data):
     elif action[1] == '-':
       if user_data[action[0]] > 0:
         user_data[action[0]]-=1
-    bot.edit_message_text(chat_id = update.callback_query.message.chat_id, message_id = update.callback_query.message.message_id, text = botText['buy'].format(user_data['coffee'], user_data['soft'], user_data['water'], user_data['choc'], user_data['beer']), reply_markup = createInlineKeyboard([[["➖", "{}_-".format(i[1])], [i[0], str(BUY)], ["➕", "{}_+".format(i[1])]] for i in botText['buyKeyboardPart']] + botText['buyKeyboard']))
+    bot.edit_message_text(chat_id = update.callback_query.message.chat_id, message_id = update.callback_query.message.message_id, text = botText['buy'].format(user_data['coffee'], user_data['soft'], user_data['water'], user_data['choc'], user_data['beer']), reply_markup = createKeyboard([[["➖", "{}_-".format(i[1])], [i[0], str(BUY)], ["➕", "{}_+".format(i[1])]] for i in botText['buyKeyboardPart']] + botText['buyKeyboard']))
   else:
     number = int(action[0])
     if number == CONFIRMBUY:
       sum = (user_data['soft']*100 + user_data['beer']*100 + user_data['water']*60 + user_data['coffee']*30 + user_data['choc']*25)/100
-      bot.edit_message_text(chat_id = update.callback_query.message.chat_id, message_id = update.callback_query.message.message_id, text = botText['confirmBuy'].format(user_data['coffee'], user_data['soft'], user_data['water'], user_data['choc'], user_data['beer'], sum), reply_markup = createInlineKeyboard(botText['confirmBuyKeyboard']))
+      bot.edit_message_text(chat_id = update.callback_query.message.chat_id, message_id = update.callback_query.message.message_id, text = botText['confirmBuy'].format(user_data['coffee'], user_data['soft'], user_data['water'], user_data['choc'], user_data['beer'], sum), reply_markup = createKeyboard(botText['confirmBuyKeyboard']))
     elif number == BILL:
       user_data.clear()
       bill = dbFuncs.getBill(update.callback_query.from_user['id'])
       sum = (bill[1]*30 + bill[2]*100 + bill[3]*60 + bill[4]*25 + bill[5]*100 + bill[6])/100
-      bot.edit_message_text(chat_id = update.callback_query.message.chat_id, message_id = update.callback_query.message.message_id, text = botText['bill'].format(sum), reply_markup = createInlineKeyboard(botText['billKeyboard']))
+      bot.edit_message_text(chat_id = update.callback_query.message.chat_id, message_id = update.callback_query.message.message_id, text = botText['bill'].format(sum), reply_markup = createKeyboard(botText['billKeyboard']))
     elif number == MAINSCREEN:
       user_data.clear()
-      bot.edit_message_text(chat_id = update.callback_query.message.chat_id, message_id = update.callback_query.message.message_id, text = botText['mainScreen'], reply_markup = createInlineKeyboard(botText['mainScreenKeyboard']))
+      bot.edit_message_text(chat_id = update.callback_query.message.chat_id, message_id = update.callback_query.message.message_id, text = botText['mainScreen'], reply_markup = createKeyboard(botText['mainScreenKeyboard']))
     elif number == BUY:
       return BUY
     else:
@@ -217,12 +205,12 @@ def confirmBuy(bot, update, user_data):
     user_data.clear()
     bill = dbFuncs.getBill(update.callback_query.from_user['id'])
     sum = (bill[1]*30 + bill[2]*100 + bill[3]*60 + bill[4]*25 + bill[5]*100 + bill[6])/100
-    bot.edit_message_text(chat_id = update.callback_query.message.chat_id, message_id = update.callback_query.message.message_id, text = botText['bill'].format(sum), reply_markup = createInlineKeyboard(botText['billKeyboard']))
+    bot.edit_message_text(chat_id = update.callback_query.message.chat_id, message_id = update.callback_query.message.message_id, text = botText['bill'].format(sum), reply_markup = createKeyboard(botText['billKeyboard']))
   elif number == BUY:
-    bot.edit_message_text(chat_id = update.callback_query.message.chat_id, message_id = update.callback_query.message.message_id, text = botText['buy'].format(user_data['coffee'], user_data['soft'], user_data['water'], user_data['choc'], user_data['beer']), reply_markup = createInlineKeyboard([[["➖", "{}_-".format(i[1])], [i[0], str(BUY)], ["➕", "{}_+".format(i[1])]] for i in botText['buyKeyboardPart']] + botText['buyKeyboard']))
+    bot.edit_message_text(chat_id = update.callback_query.message.chat_id, message_id = update.callback_query.message.message_id, text = botText['buy'].format(user_data['coffee'], user_data['soft'], user_data['water'], user_data['choc'], user_data['beer']), reply_markup = createKeyboard([[["➖", "{}_-".format(i[1])], [i[0], str(BUY)], ["➕", "{}_+".format(i[1])]] for i in botText['buyKeyboardPart']] + botText['buyKeyboard']))
   elif number == MAINSCREEN:
     user_data.clear()
-    bot.edit_message_text(chat_id = update.callback_query.message.chat_id, message_id = update.callback_query.message.message_id, text = botText['mainScreen'], reply_markup = createInlineKeyboard(botText['mainScreenKeyboard']))
+    bot.edit_message_text(chat_id = update.callback_query.message.chat_id, message_id = update.callback_query.message.message_id, text = botText['mainScreen'], reply_markup = createKeyboard(botText['mainScreenKeyboard']))
   else:
     return error(bot, update.callback_query.from_user['id'])
   return number
@@ -232,11 +220,11 @@ def settings(bot, update):
   botText = getBotText(update.callback_query.from_user['id'])
   number = int(update.callback_query.data)
   if number == LANGUAGE:
-    bot.edit_message_text(chat_id = update.callback_query.message.chat_id, message_id = update.callback_query.message.message_id, text = botText['languageSettings'], reply_markup = createInlineKeyboard([[[i]*2 for i in langs[j*3:j*3+3]]for j in range(1+int(len(langs)/3))]+botText['langinfoKeyboard']))
+    bot.edit_message_text(chat_id = update.callback_query.message.chat_id, message_id = update.callback_query.message.message_id, text = botText['languageSettings'], reply_markup = createKeyboard([[[i]*2 for i in langs[j*3:j*3+3]]for j in range(1+int(len(langs)/3))]+botText['langinfoKeyboard']))
   elif number == INFORMATIONS:
-    bot.edit_message_text(chat_id = update.callback_query.message.chat_id, message_id = update.callback_query.message.message_id, text = botText['informations'], reply_markup = createInlineKeyboard(botText['informationsKeyboard']+botText['langinfoKeyboard']))
+    bot.edit_message_text(chat_id = update.callback_query.message.chat_id, message_id = update.callback_query.message.message_id, text = botText['informations'], reply_markup = createKeyboard(botText['informationsKeyboard']+botText['langinfoKeyboard']))
   elif number == MAINSCREEN:
-    bot.edit_message_text(chat_id = update.callback_query.message.chat_id, message_id = update.callback_query.message.message_id, text = botText['mainScreen'], reply_markup = createInlineKeyboard(botText['mainScreenKeyboard']))
+    bot.edit_message_text(chat_id = update.callback_query.message.chat_id, message_id = update.callback_query.message.message_id, text = botText['mainScreen'], reply_markup = createKeyboard(botText['mainScreenKeyboard']))
   else:
     return error(bot, update.callback_query.from_user['id'])
   return number
@@ -248,9 +236,9 @@ def language(bot, update):
   if helpFuncs.isInt(action):
     number = int(action)
     if number == SETTINGS:
-      bot.edit_message_text(chat_id = update.callback_query.message.chat_id, message_id = update.callback_query.message.message_id, text = botText['settings'], reply_markup = createInlineKeyboard(botText['settingsKeyboard']))
+      bot.edit_message_text(chat_id = update.callback_query.message.chat_id, message_id = update.callback_query.message.message_id, text = botText['settings'], reply_markup = createKeyboard(botText['settingsKeyboard']))
     elif number == MAINSCREEN:
-      bot.edit_message_text(chat_id = update.callback_query.message.chat_id, message_id = update.callback_query.message.message_id, text = botText['mainScreen'], reply_markup = createInlineKeyboard(botText['mainScreenKeyboard']))
+      bot.edit_message_text(chat_id = update.callback_query.message.chat_id, message_id = update.callback_query.message.message_id, text = botText['mainScreen'], reply_markup = createKeyboard(botText['mainScreenKeyboard']))
     else:
       return error(bot, update.callback_query.from_user['id'])
     return number
@@ -261,7 +249,7 @@ def language(bot, update):
     botText2 = getBotText(update.callback_query.from_user['id'])
     if botText != botText2:
       botText = botText2
-      bot.edit_message_text(chat_id = update.callback_query.message.chat_id, message_id = update.callback_query.message.message_id, text = botText['languageSettings'], reply_markup = createInlineKeyboard([[[i]*2 for i in langs[j*3:j*3+3]]for j in range(1+int(len(langs)/3))]+botText['langinfoKeyboard']))
+      bot.edit_message_text(chat_id = update.callback_query.message.chat_id, message_id = update.callback_query.message.message_id, text = botText['languageSettings'], reply_markup = createKeyboard([[[i]*2 for i in langs[j*3:j*3+3]]for j in range(1+int(len(langs)/3))]+botText['langinfoKeyboard']))
     else:
       bot.answer_callback_query(update.callback_query.id)
     return LANGUAGE
@@ -273,9 +261,9 @@ def informations(bot, update):
   if helpFuncs.isInt(action):
     number = int(action)
     if number == SETTINGS:
-      bot.edit_message_text(chat_id = update.callback_query.message.chat_id, message_id = update.callback_query.message.message_id, text = botText['settings'], reply_markup = createInlineKeyboard(botText['settingsKeyboard']))
+      bot.edit_message_text(chat_id = update.callback_query.message.chat_id, message_id = update.callback_query.message.message_id, text = botText['settings'], reply_markup = createKeyboard(botText['settingsKeyboard']))
     elif number == MAINSCREEN:
-      bot.edit_message_text(chat_id = update.callback_query.message.chat_id, message_id = update.callback_query.message.message_id, text = botText['mainScreen'], reply_markup = createInlineKeyboard(botText['mainScreenKeyboard']))
+      bot.edit_message_text(chat_id = update.callback_query.message.chat_id, message_id = update.callback_query.message.message_id, text = botText['mainScreen'], reply_markup = createKeyboard(botText['mainScreenKeyboard']))
     else:
       return error(bot, update.callback_query.from_user['id'])
     return number
@@ -283,7 +271,7 @@ def informations(bot, update):
     if action == "p" or action == "c":
       return INFORMATIONS
     elif action == "r":
-      bot.edit_message_text(chat_id = update.callback_query.message.chat_id, message_id = update.callback_query.message.message_id, text = botText['confirmRevoke'], reply_markup = createInlineKeyboard(botText['underUsageKeyboard']))
+      bot.edit_message_text(chat_id = update.callback_query.message.chat_id, message_id = update.callback_query.message.message_id, text = botText['confirmRevoke'], reply_markup = createKeyboard(botText['underUsageKeyboard']))
       return REVOKE
     else:
       return error(bot, update.callback_query.from_user['id'])
@@ -305,7 +293,7 @@ def revoke(bot, update):
       bot.send_message(chat_id = update.callback_query.message.chat_id, text = botText['tgIdRemoved'])
       return ConversationHandler.END
     elif action == 'n':
-      bot.edit_message_text(chat_id = update.callback_query.message.chat_id, message_id = update.callback_query.message.message_id, text = botText['informations'], reply_markup = createInlineKeyboard(botText['informationsKeyboard']+botText['langinfoKeyboard']))
+      bot.edit_message_text(chat_id = update.callback_query.message.chat_id, message_id = update.callback_query.message.message_id, text = botText['informations'], reply_markup = createKeyboard(botText['informationsKeyboard']+botText['langinfoKeyboard']))
       return INFORMATIONS
     else:
       return error(bot, update.callback_query.message.id)
@@ -325,7 +313,7 @@ def cancel(bot, update, user_data):
   bot.send_message(chat_id = update.message.chat_id, text = botText['cancelled'])
   return ConversationHandler.END
 
-def createInlineKeyboard(choices):
+def createKeyboard(choices):
   keyboard = []
   for i in choices:
     keyboard.append([])
@@ -333,24 +321,15 @@ def createInlineKeyboard(choices):
       keyboard[-1].append(InlineKeyboardButton(text = j[0], callback_data = j[1]))
   return InlineKeyboardMarkup(keyboard)
 
-def createReplyKeyboard(choices):
-  keyboard = []
-  for i in choices:
-    keyboard.append([])
-    for j in i:
-      if '[' in str(j):
-        keyboard[-1].append(KeyboardButton(text = j[0]))
-      else:
-        keyboard[-1].append(KeyboardButton(text = j))
-  return ReplyKeyboardMarkup(keyboard, one_time_keyboard = True)
-
 def getLang(user):
   lang = ""
   if dbFuncs.isTGMember(tid = user['id']):
-    return dbFuncs.getTelegramID(id = user['id'])[3]
+    lang = dbFuncs.getTelegramID(id = user['id'])[3]
   else:
     if user['language_code']:
       lang = user['language_code'][0:2]
+    else:
+      lang = "en"
   if lang not in langs:
     lang = "en"
   return lang
@@ -390,7 +369,7 @@ def error(bot, id):
     except:
       bot.edit_message_text(chat_id = oldID[0], message_id = oldID[2], text = "⬇")
     bot.send_message(chat_id = id, text = botText['error'])
-    dbFuncs.updateMessage(id, bot.send_message(chat_id = id, text = botText['mainScreen'], reply_markup = createInlineKeyboard(botText['mainScreenKeyboard'])).message_id)
+    dbFuncs.updateMessage(id, bot.send_message(chat_id = id, text = botText['mainScreen'], reply_markup = createKeyboard(botText['mainScreenKeyboard'])).message_id)
     return MAINSCREEN
 
 ##### Main Function
@@ -403,10 +382,10 @@ def main(updater):
   starter = ConversationHandler(
     entry_points = [CommandHandler('start', start, Filters.private)],
     states = {
-      SETLANG: [MessageHandler(filters = Filters.private&Filters.text, callback = setLang, pass_user_data = True)],
-      TGUNDERUSAGE: [MessageHandler(filters = Filters.private&Filters.text, callback = tgUnderUsage)],
+      SETLANG: [CallbackQueryHandler(setLang, pass_user_data = True)],
+      TGUNDERUSAGE: [CallbackQueryHandler(tgUnderUsage)],
       EMAIL: [MessageHandler(filters = Filters.private&Filters.text, callback = setMail, pass_user_data = True)],
-      MAILUNDERUSAGE: [MessageHandler(filters = Filters.private&Filters.text, callback = mailUnderUsage, pass_user_data = True)],
+      MAILUNDERUSAGE: [CallbackQueryHandler(mailUnderUsage, pass_user_data = True)],
       CONFIRMATION: [MessageHandler(filters = Filters.private&Filters.text, callback = confirmation, pass_user_data = True)]
     },
     fallbacks = [CommandHandler('cancel', cancel, Filters.private, pass_user_data = True)]

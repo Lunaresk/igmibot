@@ -3,6 +3,7 @@
   "privacy": "Während der Registrierung werden alle Daten, die eingegeben werden, temporär gespeichert. Das bedeutet, die Daten können durch Eingabe von /cancel gelöscht werden. Temporär gespeichert Daten werden auch durch einen Neustart des Bots gelöscht.\nNach erfolgreicher Registrierung werden die Daten permanent gespeichert.\nGespeichert werden: Telegram ID, Email-Adresse, Spracheinstellung.\nDiese Daten können im Informationsbereich des Bots jederzeit wieder gelöscht werden. Weitere Informationen gibt es im Informationsbereich.",
   "tgUnderUsage": "Dieser Telegram-Account wird schon von einem IGMI-Mitglied verwendet. Willst du diese Verknüpfung aufheben?",
   "underUsageKeyboard": [[["Ja", "y"],["Nein", "n"]]],
+  "useKeyboard": "Bitte die zur Verfügung gestellten Buttons benutzen.",
   "tgIdRemoved": "Telegram-Email Verknüpfung aufgehoben. Benutze /start um neu zu starten.",
   "langSet": "Sprache gewählt. ",
   "enterEmail": "Bitte gib nun deine Email-Adresse ein.\nEine Bestätigungsmail wird gesendet, um dich zu verifizieren.",

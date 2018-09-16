@@ -3,6 +3,7 @@
   "privacy": "TODO",
   "tgUnderUsage": "This telegram account is already connected by a member of IGMI. Do you want to remove this connection?",
   "underUsageKeyboard": [[["Yes", "y"],["No", "n"]]],
+  "useKeyboard": "Please use the provided keyboard to choose the language.",
   "tgIdRemoved": "Telegram-Email connection removed. Use /start to start again.",
   "langSet": "Language set. ",
   "enterEmail": "Please enter your Email-address now.\nAfter entering your Email, a confirmation code will be sent to verify your ownership.",

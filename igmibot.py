@@ -511,17 +511,17 @@ def main(updater):
   updater.idle()
 
   try:
-    with open('{0}/userdata', 'wb+') as file:
+    with open('{0}/userdata'.format(backupsDir), 'wb+') as file:
       pickledump(dispatcher.user_data, file)
   except Exception as e:
     logger.warning(repr(e))
   try:
-    with open('{0}/register', 'wb+') as file:
+    with open('{0}/register'.format(backupsDir), 'wb+') as file:
       pickledump(register.conversations, file)
   except Exception as e:
     logger.warning(repr(e))
   try:
-    with open('{0}/control', 'wb+') as file:
+    with open('{0}/control'.format(backupsDir), 'wb+') as file:
       pickledump(control.conversations, file)
   except Exception as e:
     logger.warning(repr(e))

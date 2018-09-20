@@ -105,3 +105,11 @@ venv.bak/
 
 # excel tables
 *.xlsx
+
+# ubuntu specific files
+*.swp
+*.save
+
+# bot-relevant data
+backups
+backups/*

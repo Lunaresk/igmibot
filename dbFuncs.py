@@ -23,6 +23,13 @@ def insertMember(email, lang, tid, message):
     cur.execute("INSERT INTO TelegramID(Id, EMail, Message, Language) VALUES(%s, %s, %s, %s);", (tid, email, message, lang))
     conn.commit()
 
+def insertNewMember(email, firstname, lastname):
+  with getConn('igmibot') as conn:
+    cur = conn.cursor()
+    cur.execute("INSERT INTO Members(Email, Firstname, Lastname) VALUES(%s, %s, %s);", (email, firstname, lastname))
+    cur.execute("INSERT INTO Bill(Email) VALUES(%s);", (email,))
+    conn.commit
+
 # Check if the entered email-adress is registered in the database
 def isIGMIMember(email):
   with getConn('igmibot') as conn:
